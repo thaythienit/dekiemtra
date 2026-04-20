@@ -1,0 +1,6 @@
+{
+  "name": "Tạo đề kiểm tra cho Giáo viên Tiểu học",
+  "description": "Một ứng dụng web để tạo các bài kiểm tra cho học sinh tiểu học dựa trên các thông số tùy chỉnh như môn học, mức độ nhận thức và loại câu hỏi, tuân thủ Thông tư 27 của Bộ GD&ĐT Việt Nam.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
