@@ -1,6 +1,16 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, VerticalMergeType, BorderStyle, VerticalAlign, ShadingType } from 'docx';
 import type { GeneratedTest, TestSolution, MatrixRow, FormData, CognitiveLevel, TechnicalDesign } from '../types.ts';
 
+const formatScore = (score: number) => {
+    return score.toFixed(1).replace(/\.0$/, '');
+};
+
+const sanitizeOption = (opt: string) => {
+    const trimmed = opt.trim();
+    const regex = /^[A-D](\.|\:|\s|\-)+\s*/i;
+    return trimmed.replace(regex, '');
+};
+
 export const exportMatrixToDocx = (data: {
     matrix: MatrixRow[];
     formData: FormData;
@@ -29,6 +39,20 @@ export const exportMatrixToDocx = (data: {
     
     const pointsPerMcq = totals.mcq.total > 0 ? mcqTotalScore / totals.mcq.total : 0;
     const pointsPerWritten = totals.written.total > 0 ? writtenTotalScore / totals.written.total : 0;
+
+    const getMcqPoints = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank') => {
+        if (formData.customPoints && formData.customPoints[type] > 0) {
+            return formData.customPoints[type];
+        }
+        return pointsPerMcq;
+    };
+
+    const getWrittenPoints = (index: number) => {
+        if (formData.customPoints && formData.customPoints.written && formData.customPoints.written[index] > 0) {
+            return formData.customPoints.written[index];
+        }
+        return pointsPerWritten;
+    };
 
     const level1Points = (totals.mcq.recognition * pointsPerMcq) + (totals.written.recognition * pointsPerWritten);
     const level2Points = (totals.mcq.comprehension * pointsPerMcq) + (totals.written.comprehension * pointsPerWritten);
@@ -338,6 +362,20 @@ export const exportTestToDocx = (
   const pointsPerMcq = totalMcqCount > 0 ? mcqScore / totalMcqCount : 0;
   const pointsPerWritten = totalWrittenCount > 0 ? writtenScore / totalWrittenCount : 0;
 
+  const getMcqPoints = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank') => {
+    if (formData.customPoints && formData.customPoints[type] > 0) {
+        return formData.customPoints[type];
+    }
+    return pointsPerMcq;
+  };
+
+  const getWrittenPoints = (index: number) => {
+    if (formData.customPoints && formData.customPoints.written && formData.customPoints.written[index] > 0) {
+        return formData.customPoints.written[index];
+    }
+    return pointsPerWritten;
+  };
+
   const formatScore = (score: number) => {
     return score.toFixed(1).replace(/\.0$/, '');
   };
@@ -379,7 +417,7 @@ export const exportTestToDocx = (
       questionCounter++;
       children.push(new Paragraph({
           children: [
-              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }),
+              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('trueFalse'))} điểm): `, bold: true, size: 24 }),
               new TextRun({ text: q.questionText, size: 24 }),
           ],
       }));
@@ -393,7 +431,7 @@ export const exportTestToDocx = (
       questionCounter++;
       children.push(new Paragraph({
           children: [
-              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }),
+              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('matching'))} điểm): `, bold: true, size: 24 }),
               new TextRun({ text: q.prompt, size: 24 }),
           ],
       }));
@@ -417,7 +455,7 @@ export const exportTestToDocx = (
       questionCounter++;
       children.push(new Paragraph({
           children: [
-              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }),
+              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('fillBlank'))} điểm): `, bold: true, size: 24 }),
               new TextRun({ text: q.questionText, size: 24 }),
           ],
       }));
@@ -429,12 +467,12 @@ export const exportTestToDocx = (
       questionCounter++;
       children.push(new Paragraph({
           children: [
-              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }),
+              new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('multipleChoice'))} điểm): `, bold: true, size: 24 }),
               new TextRun({ text: q.questionText, size: 24 }),
           ],
       }));
       q.options.forEach((option, optIndex) => {
-          children.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + optIndex)}. ${option}`, size: 24 })] }));
+          children.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + optIndex)}. ${sanitizeOption(option)}`, size: 24 })] }));
       });
       children.push(new Paragraph({ text: "" }));
   });
@@ -447,7 +485,7 @@ export const exportTestToDocx = (
   (testData.writtenQuestions || []).forEach((q, index) => {
       children.push(new Paragraph({
           children: [
-              new TextRun({ text: `Câu ${questionCounter + index + 1} (${formatPoints(pointsPerWritten)} điểm): `, bold: true, size: 24 }),
+              new TextRun({ text: `Câu ${questionCounter + index + 1} (${formatPoints(getWrittenPoints(index))} điểm): `, bold: true, size: 24 }),
               new TextRun({ text: q.questionText, size: 24 }),
           ],
       }));
@@ -536,6 +574,20 @@ export const exportFullBundleToDocx = (data: {
 
     const pointsPerMcq = totals.mcq.total > 0 ? mcqTotalScore / totals.mcq.total : 0;
     const pointsPerWritten = totals.written.total > 0 ? writtenTotalScore / totals.written.total : 0;
+
+    const getMcqPoints = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank') => {
+        if (formData.customPoints && formData.customPoints[type] > 0) {
+            return formData.customPoints[type];
+        }
+        return pointsPerMcq;
+    };
+
+    const getWrittenPoints = (index: number) => {
+        if (formData.customPoints && formData.customPoints.written && formData.customPoints.written[index] > 0) {
+            return formData.customPoints.written[index];
+        }
+        return pointsPerWritten;
+    };
 
     const level1Points = (totals.mcq.recognition * pointsPerMcq) + (totals.written.recognition * pointsPerWritten);
     const level2Points = (totals.mcq.comprehension * pointsPerMcq) + (totals.written.comprehension * pointsPerWritten);
@@ -768,11 +820,19 @@ export const exportFullBundleToDocx = (data: {
         new Paragraph({ children: [new TextRun({ text: `I. PHẦN TRẮC NGHIỆM (${formatPoints(mcqTotalScore).replace(',', '.')} điểm)`, bold: true, size: 26 })] }),
     ];
 
+    const getQuestionType = (q: any) => {
+        if (q.options) return 'multipleChoice';
+        if (q.pairs) return 'matching';
+        if (q.correctAnswer !== undefined && typeof q.correctAnswer === 'boolean') return 'trueFalse';
+        return 'fillBlank';
+    };
+
     const addQuestion = (q: any) => {
         questionCounter++;
+        const type = getQuestionType(q);
         testChildren.push(new Paragraph({
             children: [
-                new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq).replace(',', '.')} điểm): `, bold: true, size: 22 }),
+                new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints(type)).replace(',', '.')} điểm): `, bold: true, size: 22 }),
                 new TextRun({ text: q.questionText || q.prompt || "", size: 22 }),
             ]
         }));
@@ -804,7 +864,7 @@ export const exportFullBundleToDocx = (data: {
     (testData.multipleChoiceQuestions || []).forEach(q => {
         addQuestion(q);
         q.options.forEach((opt, i) => {
-            testChildren.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + i)}. ${opt}`, size: 22 })] }));
+            testChildren.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + i)}. ${sanitizeOption(opt)}`, size: 22 })] }));
         });
         testChildren.push(new Paragraph({ text: "" }));
     });
@@ -813,7 +873,7 @@ export const exportFullBundleToDocx = (data: {
     (testData.writtenQuestions || []).forEach((q, i) => {
         testChildren.push(new Paragraph({
             children: [
-                new TextRun({ text: `Câu ${questionCounter + i + 1} (${formatPoints(pointsPerWritten).replace(',', '.')} điểm): `, bold: true, size: 22 }),
+                new TextRun({ text: `Câu ${questionCounter + i + 1} (${formatPoints(getWrittenPoints(i)).replace(',', '.')} điểm): `, bold: true, size: 22 }),
                 new TextRun({ text: q.questionText, size: 22 }),
             ]
         }));
@@ -892,6 +952,20 @@ export const exportTestWithSolutionToDocx = (
   const pointsPerMcq = totalMcqCount > 0 ? mcqScore / totalMcqCount : 0;
   const pointsPerWritten = totalWrittenCount > 0 ? writtenScore / totalWrittenCount : 0;
 
+  const getMcqPoints = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank') => {
+    if (formData.customPoints && formData.customPoints[type] > 0) {
+        return formData.customPoints[type];
+    }
+    return pointsPerMcq;
+  };
+
+  const getWrittenPoints = (index: number) => {
+    if (formData.customPoints && formData.customPoints.written && formData.customPoints.written[index] > 0) {
+        return formData.customPoints.written[index];
+    }
+    return pointsPerWritten;
+  };
+
   const formatScore = (score: number) => score.toFixed(1).replace(/\.0$/, '');
   const formatPoints = (points: number) => parseFloat(points.toFixed(2)).toString();
 
@@ -918,12 +992,12 @@ export const exportTestWithSolutionToDocx = (
       new Paragraph({ text: "" }),
       new Paragraph({ children: [ new TextRun({ text: `I. PHẦN TRẮC NGHIỆM (${formatScore(mcqScore)} điểm)`, bold: true, size: 26, })], heading: HeadingLevel.HEADING_1}),
   ];
-  (testData.trueFalseQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ children: [new TextRun({ text: `  A. Đúng`, size: 24 })]})); children.push(new Paragraph({ children: [new TextRun({ text: `  B. Sai`, size: 24 })]})); children.push(new Paragraph({ text: "" })); });
-  (testData.matchingQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.prompt, size: 24 })]})); const rows: TableRow[] = []; q.pairs.forEach((pair, index) => { rows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: `${index + 1}. ${pair.itemA}` })], width: { size: 45, type: WidthType.PERCENTAGE } }), new TableCell({ children: [new Paragraph({ text: `${String.fromCharCode(65 + index)}. ${pair.itemB}` })], width: { size: 45, type: WidthType.PERCENTAGE } }), ]})); }); children.push(new Table({ rows, width: { size: 90, type: WidthType.PERCENTAGE } })); children.push(new Paragraph({ text: "" })); });
-  (testData.fillBlankQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ text: "" })); });
-  (testData.multipleChoiceQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(pointsPerMcq)} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); q.options.forEach((option, optIndex) => { children.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + optIndex)}. ${option}`, size: 24 })]})); }); children.push(new Paragraph({ text: "" })); });
+  (testData.trueFalseQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('trueFalse'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ children: [new TextRun({ text: `  A. Đúng`, size: 24 })]})); children.push(new Paragraph({ children: [new TextRun({ text: `  B. Sai`, size: 24 })]})); children.push(new Paragraph({ text: "" })); });
+  (testData.matchingQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('matching'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.prompt, size: 24 })]})); const rows: TableRow[] = []; q.pairs.forEach((pair, index) => { rows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: `${index + 1}. ${pair.itemA}` })], width: { size: 45, type: WidthType.PERCENTAGE } }), new TableCell({ children: [new Paragraph({ text: `${String.fromCharCode(65 + index)}. ${pair.itemB}` })], width: { size: 45, type: WidthType.PERCENTAGE } }), ]})); }); children.push(new Table({ rows, width: { size: 90, type: WidthType.PERCENTAGE } })); children.push(new Paragraph({ text: "" })); });
+  (testData.fillBlankQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('fillBlank'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ text: "" })); });
+  (testData.multipleChoiceQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('multipleChoice'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); q.options.forEach((option, optIndex) => { children.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + optIndex)}. ${sanitizeOption(option)}`, size: 24 })]})); }); children.push(new Paragraph({ text: "" })); });
   children.push(new Paragraph({ children: [ new TextRun({ text: `II. PHẦN TỰ LUẬN (${formatScore(writtenScore)} điểm)`, bold: true, size: 26, })], heading: HeadingLevel.HEADING_1}));
-  (testData.writtenQuestions || []).forEach((q, index) => { children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter + index + 1} (${formatPoints(pointsPerWritten)} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" })); });
+  (testData.writtenQuestions || []).forEach((q, index) => { children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter + index + 1} (${formatPoints(getWrittenPoints(index))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" })); });
   // --- End of Test Content Generation ---
 
   // --- Start of Solution Content Generation ---

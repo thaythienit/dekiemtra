@@ -9,7 +9,7 @@ const Header: React.FC = () => {
         <div className="flex items-center space-x-3">
           <BrainCircuitIcon className="w-10 h-10 text-blue-600"/>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Tạo đề kiểm tra cho Giáo viên Tiểu học</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Tạo đề kiểm Tra Môn Tin học, Công Nghệ Tiểu học</h1>
             <p className="text-sm text-gray-500">Tạo đề thi nhanh chóng theo Thông tư 27/2020/TT-BGDĐT</p>
           </div>
         </div>

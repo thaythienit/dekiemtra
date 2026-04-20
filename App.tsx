@@ -47,6 +47,13 @@ const App: React.FC = () => {
       fillBlank: 0,
     },
     additionalRequirements: '',
+    customPoints: {
+      multipleChoice: 0,
+      trueFalse: 0,
+      matching: 0,
+      fillBlank: 0,
+      written: [],
+    },
   });
 
   const [apiKey, setApiKey] = useState('');
@@ -421,6 +428,16 @@ const App: React.FC = () => {
       if (!('schoolYear' in loadedFormData)) {
         const currentYear = new Date().getFullYear();
         loadedFormData.schoolYear = `${currentYear} – ${currentYear + 1}`;
+      }
+
+      if (!('customPoints' in loadedFormData)) {
+        loadedFormData.customPoints = {
+          multipleChoice: 0,
+          trueFalse: 0,
+          matching: 0,
+          fillBlank: 0,
+          written: [],
+        };
       }
       
       if (!('cognitiveLevelCounts' in loadedFormData) && ('recognitionRatio' in loadedFormData)) {

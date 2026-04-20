@@ -97,6 +97,13 @@ export interface FormData {
     fillBlank: number;
   };
   additionalRequirements?: string;
+  customPoints?: {
+    multipleChoice: number;
+    trueFalse: number;
+    matching: number;
+    fillBlank: number;
+    written: number[];
+  };
 }
 
 export interface MatrixRow {

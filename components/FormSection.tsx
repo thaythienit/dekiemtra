@@ -180,6 +180,46 @@ const FormSection: React.FC<FormSectionProps> = ({
     }));
   };
 
+  const handleCustomPointChange = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank' | 'written', index: number | null, value: string) => {
+    const numValue = parseFloat(value.replace(',', '.'));
+    if (isNaN(numValue)) {
+        if (value === '') {
+            setFormData(prev => {
+                const customPoints = prev.customPoints || { multipleChoice: 0, trueFalse: 0, matching: 0, fillBlank: 0, written: [] };
+                if (type === 'written' && index !== null) {
+                    const newWritten = [...customPoints.written];
+                    newWritten[index] = 0;
+                    return { ...prev, customPoints: { ...customPoints, written: newWritten } };
+                } else if (type !== 'written') {
+                    return { ...prev, customPoints: { ...customPoints, [type]: 0 } };
+                }
+                return prev;
+            });
+        }
+        return;
+    }
+
+    setFormData(prev => {
+        const customPoints = prev.customPoints || { multipleChoice: 0, trueFalse: 0, matching: 0, fillBlank: 0, written: [] };
+
+        if (type === 'written' && index !== null) {
+            const newWritten = [...customPoints.written];
+            newWritten[index] = numValue;
+            while(newWritten.length < prev.writtenCount) newWritten.push(0);
+            return {
+                ...prev,
+                customPoints: { ...customPoints, written: newWritten }
+            };
+        } else if (type !== 'written') {
+           return {
+                ...prev,
+                customPoints: { ...customPoints, [type]: numValue }
+           };
+        }
+        return prev;
+    });
+  };
+
   const handleToggleTheme = (themeId: string) => {
       setOpenThemes(prev => {
           const newSet = new Set(prev);
@@ -433,6 +473,105 @@ const FormSection: React.FC<FormSectionProps> = ({
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" 
                       />
                   </div>
+              </div>
+
+              {/* Tùy chỉnh điểm từng câu */}
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-4">
+                <div className="flex items-center space-x-2 text-blue-800">
+                    <InfoIcon className="w-5 h-5 flex-shrink-0" />
+                    <h3 className="text-sm font-bold uppercase tracking-wide">Tùy chỉnh điểm từng câu (Điền để thay đổi điểm mặc định)</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Điểm trắc nghiệm */}
+                    <div className="space-y-3">
+                        <label className="block text-xs font-bold text-gray-500 uppercase">Phần Trắc nghiệm (Điểm mỗi câu)</label>
+                        <div className="space-y-2">
+                            {formData.mcqTypeCounts.multipleChoice > 0 && (
+                                <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                                    <span className="text-sm text-gray-700">Nhiều lựa chọn</span>
+                                    <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
+                                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            value={formData.customPoints?.multipleChoice || ''}
+                                            onChange={(e) => handleCustomPointChange('multipleChoice', null, e.target.value)}
+                                        />
+                                        <span className="text-xs text-gray-400">điểm</span>
+                                    </div>
+                                </div>
+                            )}
+                            {formData.mcqTypeCounts.trueFalse > 0 && (
+                                <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                                    <span className="text-sm text-gray-700">Đúng - Sai</span>
+                                    <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
+                                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            value={formData.customPoints?.trueFalse || ''}
+                                            onChange={(e) => handleCustomPointChange('trueFalse', null, e.target.value)}
+                                        />
+                                        <span className="text-xs text-gray-400">điểm</span>
+                                    </div>
+                                </div>
+                            )}
+                            {formData.mcqTypeCounts.matching > 0 && (
+                                <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                                    <span className="text-sm text-gray-700">Ghép đôi</span>
+                                    <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
+                                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            value={formData.customPoints?.matching || ''}
+                                            onChange={(e) => handleCustomPointChange('matching', null, e.target.value)}
+                                        />
+                                        <span className="text-xs text-gray-400">điểm</span>
+                                    </div>
+                                </div>
+                            )}
+                            {formData.mcqTypeCounts.fillBlank > 0 && (
+                                <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                                    <span className="text-sm text-gray-700">Điền khuyết</span>
+                                    <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
+                                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            value={formData.customPoints?.fillBlank || ''}
+                                            onChange={(e) => handleCustomPointChange('fillBlank', null, e.target.value)}
+                                        />
+                                        <span className="text-xs text-gray-400">điểm</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Điểm tự luận */}
+                    <div className="space-y-3">
+                        <label className="block text-xs font-bold text-gray-500 uppercase">Phần Tự luận (Điểm từng câu)</label>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {Array.from({ length: formData.writtenCount }).map((_, i) => (
+                                <div key={`written-point-${i}`} className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                                    <span className="text-sm text-gray-700">Câu tự luận {i + 1}</span>
+                                    <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder={formData.writtenCount > 0 ? ((formData.writtenRatio / 10) / formData.writtenCount).toFixed(1) : '0'} 
+                                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            value={formData.customPoints?.written?.[i] || ''}
+                                            onChange={(e) => handleCustomPointChange('written', i, e.target.value)}
+                                        />
+                                        <span className="text-xs text-gray-400">điểm</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
               </div>
           </div>
 

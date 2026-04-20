@@ -104,6 +104,13 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
     return rounded.toString();
   }
 
+  const sanitizeOption = (opt: string) => {
+    const trimmed = opt.trim();
+    // Match Patterns like "A. Content", "AContent", "A: Content" etc.
+    const regex = /^[A-D](\.|\:|\s|\-)+\s*/i;
+    return trimmed.replace(regex, '');
+  };
+
   const totalScore = 10;
   const mcqScore = (mcqRatio / 100) * totalScore;
   const writtenScore = (writtenRatio / 100) * totalScore;
@@ -114,6 +121,20 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
                         (editedData.fillBlankQuestions?.length || 0);
   
   const totalWrittenCount = editedData.writtenQuestions?.length || 0;
+
+  const getMcqPoints = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank') => {
+    if (formData.customPoints && formData.customPoints[type] > 0) {
+        return formData.customPoints[type];
+    }
+    return totalMcqCount > 0 ? mcqScore / totalMcqCount : 0;
+  };
+
+  const getWrittenPoints = (index: number) => {
+    if (formData.customPoints && formData.customPoints.written && formData.customPoints.written[index] > 0) {
+        return formData.customPoints.written[index];
+    }
+    return totalWrittenCount > 0 ? writtenScore / totalWrittenCount : 0;
+  };
 
   const pointsPerMcq = totalMcqCount > 0 ? mcqScore / totalMcqCount : 0;
   const pointsPerWritten = totalWrittenCount > 0 ? writtenScore / totalWrittenCount : 0;
@@ -212,7 +233,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
                     <div key={`tf-${index}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                         <div className="flex items-center font-semibold mb-2">
                             <TrueFalseIcon className="w-5 h-5 mr-2 text-gray-500"/>
-                            <span>Câu {questionCounter} ({formatPoints(pointsPerMcq)} điểm): ({q.cognitiveLevel})</span>
+                            <span>Câu {questionCounter} ({formatPoints(getMcqPoints('trueFalse'))} điểm): ({q.cognitiveLevel})</span>
                         </div>
                          {isEditing ? (
                             <textarea value={q.questionText} onChange={(e) => handleTrueFalseChange(index, 'questionText', e.target.value)} className="w-full p-1 border rounded" />
@@ -233,7 +254,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
                     <div key={`match-${index}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                         <div className="flex items-center font-semibold mb-2">
                             <MatchingIcon className="w-5 h-5 mr-2 text-gray-500"/>
-                            <span>Câu {questionCounter} ({formatPoints(pointsPerMcq)} điểm): ({q.cognitiveLevel})</span>
+                            <span>Câu {questionCounter} ({formatPoints(getMcqPoints('matching'))} điểm): ({q.cognitiveLevel})</span>
                         </div>
                         {isEditing ? (
                              <textarea value={q.prompt} onChange={(e) => handleMatchingChange(index, 'prompt', e.target.value)} className="w-full p-1 border rounded" />
@@ -260,7 +281,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
                     <div key={`fb-${index}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                          <div className="flex items-center font-semibold mb-2">
                             <FillBlankIcon className="w-5 h-5 mr-2 text-gray-500"/>
-                            <span>Câu {questionCounter} ({formatPoints(pointsPerMcq)} điểm): ({q.cognitiveLevel})</span>
+                            <span>Câu {questionCounter} ({formatPoints(getMcqPoints('fillBlank'))} điểm): ({q.cognitiveLevel})</span>
                         </div>
                         {isEditing ? (
                              <textarea value={q.questionText} onChange={(e) => handleFillBlankChange(index, 'questionText', e.target.value)} className="w-full p-1 border rounded" />
@@ -285,7 +306,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
               <div key={`mcq-${index}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                 <div className="flex items-center font-semibold mb-2">
                     <MultipleChoiceIcon className="w-5 h-5 mr-2 text-gray-500"/>
-                    <span>Câu {questionCounter} ({formatPoints(pointsPerMcq)} điểm): ({q.cognitiveLevel})</span>
+                    <span>Câu {questionCounter} ({formatPoints(getMcqPoints('multipleChoice'))} điểm): ({q.cognitiveLevel})</span>
                 </div>
                 {isEditing ? (
                   <textarea value={q.questionText} onChange={(e) => handleMcqChange(index, 'questionText', e.target.value)} className="w-full p-1 border rounded" />
@@ -303,7 +324,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
                           handleMcqChange(index, 'options', newOptions);
                         }} className="w-full p-1 border rounded" />
                       ) : (
-                        <span>{opt}</span>
+                        <span>{sanitizeOption(opt)}</span>
                       )}
                     </div>
                   ))}
@@ -327,7 +348,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
               <details key={index} className="p-4 rounded-lg bg-gray-50 border border-gray-200 group" open={isEditing}>
                   <summary className="font-semibold cursor-pointer list-none">
                      <div className="flex justify-between items-center">
-                        <span>Câu {totalMcqCount + index + 1} ({formatPoints(pointsPerWritten)} điểm): ({q.cognitiveLevel})</span>
+                        <span>Câu {totalMcqCount + index + 1} ({formatPoints(getWrittenPoints(index))} điểm): ({q.cognitiveLevel})</span>
                         <svg className={`w-5 h-5 transition-transform transform group-open:rotate-180 ${isEditing ? 'hidden' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                         </svg>
