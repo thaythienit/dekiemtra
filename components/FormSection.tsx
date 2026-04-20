@@ -577,14 +577,28 @@ const FormSection: React.FC<FormSectionProps> = ({
 
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">Phân bổ Số lượng Câu hỏi</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-6">
                  <div className="space-y-2">
                     <label htmlFor="mcqCount" className="block text-sm font-medium text-gray-700">Số câu trắc nghiệm</label>
                     <input type="number" name="mcqCount" id="mcqCount" value={formData.mcqCount} onChange={handleDistributionChange} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                 </div>
                 <div className="space-y-2">
-                    <label htmlFor="writtenCount" className="block text-sm font-medium text-gray-700">Số câu tự luận</label>
+                    <label htmlFor="writtenCount" className="block text-sm font-medium text-gray-700">Số câu tự luận/thực hành</label>
                     <input type="number" name="writtenCount" id="writtenCount" value={formData.writtenCount} onChange={handleDistributionChange} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="writtenType" className="block text-sm font-medium text-gray-700">Dạng Phi trắc nghiệm</label>
+                  <select 
+                      name="writtenType" 
+                      id="writtenType" 
+                      value={formData.writtenType} 
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                      <option value="essay">Tự luận</option>
+                      <option value="practice">Thực hành</option>
+                      <option value="both">Tự luận & Thực hành</option>
+                  </select>
                 </div>
                  <div className="space-y-2">
                     <label htmlFor="totalQuestionCount" className="block text-sm font-medium text-gray-700">Tổng số câu hỏi</label>

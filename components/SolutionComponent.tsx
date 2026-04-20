@@ -8,9 +8,10 @@ interface SolutionComponentProps {
   solutionData: TestSolution;
   mcqRatio: number;
   writtenRatio: number;
+  writtenType: 'essay' | 'practice' | 'both';
 }
 
-const SolutionComponent: React.FC<SolutionComponentProps> = ({ testData, solutionData, mcqRatio, writtenRatio }) => {
+const SolutionComponent: React.FC<SolutionComponentProps> = ({ testData, solutionData, mcqRatio, writtenRatio, writtenType }) => {
   const formatScore = (score: number) => score.toFixed(1).replace(/\.0$/, '');
   
   const totalScore = 10;
@@ -54,7 +55,7 @@ const SolutionComponent: React.FC<SolutionComponentProps> = ({ testData, solutio
         </div>
         <div>
           <h3 className="text-xl font-semibold border-b-2 border-red-500 pb-2 mb-4 text-red-700">
-            II. PHẦN TỰ LUẬN ({formatScore(writtenScore)} điểm) - HƯỚNG DẪN CHẤM
+            II. PHẦN {writtenType === 'practice' ? 'THỰC HÀNH' : writtenType === 'both' ? 'TỰ LUẬN VÀ THỰC HÀNH' : 'TỰ LUẬN'} ({formatScore(writtenScore)} điểm) - HƯỚNG DẪN CHẤM
           </h3>
           <div className="space-y-6">
             {(solutionData.writtenGradingGuides || []).map((guide, index) => (

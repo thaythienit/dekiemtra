@@ -478,8 +478,9 @@ export const exportTestToDocx = (
   });
 
   // Written Section
+  const writtenLabel = formData.writtenType === 'practice' ? 'THỰC HÀNH' : formData.writtenType === 'both' ? 'TỰ LUẬN VÀ THỰC HÀNH' : 'TỰ LUẬN';
   children.push(new Paragraph({
-    children: [ new TextRun({ text: `II. PHẦN TỰ LUẬN (${formatScore(writtenScore)} điểm)`, bold: true, size: 26, }), ],
+    children: [ new TextRun({ text: `II. PHẦN ${writtenLabel} (${formatScore(writtenScore)} điểm)`, bold: true, size: 26, }), ],
     heading: HeadingLevel.HEADING_1,
   }));
   (testData.writtenQuestions || []).forEach((q, index) => {
@@ -869,7 +870,8 @@ export const exportFullBundleToDocx = (data: {
         testChildren.push(new Paragraph({ text: "" }));
     });
 
-    testChildren.push(new Paragraph({ children: [new TextRun({ text: `II. PHẦN TỰ LUẬN (${formatPoints(writtenTotalScore).replace(',', '.')} điểm)`, bold: true, size: 26 })] }));
+    const writtenLabelFull = formData.writtenType === 'practice' ? 'THỰC HÀNH' : formData.writtenType === 'both' ? 'TỰ LUẬN VÀ THỰC HÀNH' : 'TỰ LUẬN';
+    testChildren.push(new Paragraph({ children: [new TextRun({ text: `II. PHẦN ${writtenLabelFull} (${formatPoints(writtenTotalScore).replace(',', '.')} điểm)`, bold: true, size: 26 })] }));
     (testData.writtenQuestions || []).forEach((q, i) => {
         testChildren.push(new Paragraph({
             children: [
@@ -996,7 +998,8 @@ export const exportTestWithSolutionToDocx = (
   (testData.matchingQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('matching'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.prompt, size: 24 })]})); const rows: TableRow[] = []; q.pairs.forEach((pair, index) => { rows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph({ text: `${index + 1}. ${pair.itemA}` })], width: { size: 45, type: WidthType.PERCENTAGE } }), new TableCell({ children: [new Paragraph({ text: `${String.fromCharCode(65 + index)}. ${pair.itemB}` })], width: { size: 45, type: WidthType.PERCENTAGE } }), ]})); }); children.push(new Table({ rows, width: { size: 90, type: WidthType.PERCENTAGE } })); children.push(new Paragraph({ text: "" })); });
   (testData.fillBlankQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('fillBlank'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ text: "" })); });
   (testData.multipleChoiceQuestions || []).forEach(q => { questionCounter++; children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter} (${formatPoints(getMcqPoints('multipleChoice'))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); q.options.forEach((option, optIndex) => { children.push(new Paragraph({ children: [new TextRun({ text: `  ${String.fromCharCode(65 + optIndex)}. ${sanitizeOption(option)}`, size: 24 })]})); }); children.push(new Paragraph({ text: "" })); });
-  children.push(new Paragraph({ children: [ new TextRun({ text: `II. PHẦN TỰ LUẬN (${formatScore(writtenScore)} điểm)`, bold: true, size: 26, })], heading: HeadingLevel.HEADING_1}));
+  const writtenLabelSol = formData.writtenType === 'practice' ? 'THỰC HÀNH' : formData.writtenType === 'both' ? 'TỰ LUẬN VÀ THỰC HÀNH' : 'TỰ LUẬN';
+  children.push(new Paragraph({ children: [ new TextRun({ text: `II. PHẦN ${writtenLabelSol} (${formatScore(writtenScore)} điểm)`, bold: true, size: 26, })], heading: HeadingLevel.HEADING_1}));
   (testData.writtenQuestions || []).forEach((q, index) => { children.push(new Paragraph({children: [new TextRun({ text: `Câu ${questionCounter + index + 1} (${formatPoints(getWrittenPoints(index))} điểm): `, bold: true, size: 24 }), new TextRun({ text: q.questionText, size: 24 })]})); children.push(new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" })); });
   // --- End of Test Content Generation ---
 
@@ -1013,7 +1016,7 @@ export const exportTestWithSolutionToDocx = (
   (testData.multipleChoiceQuestions || []).forEach(q => { answerCounter++; const correctOpt = String.fromCharCode(65 + q.options.indexOf(q.correctAnswer)); children.push(new Paragraph({ children: [new TextRun({ text: `Câu ${answerCounter}: ${correctOpt}`, size: 24 })]})); });
 
   children.push(new Paragraph({ text: "" }));
-  children.push(new Paragraph({ children: [ new TextRun({ text: `II. PHẦN TỰ LUẬN - HƯỚNG DẪN CHẤM`, bold: true, size: 26, })], heading: HeadingLevel.HEADING_1}));
+  children.push(new Paragraph({ children: [ new TextRun({ text: `II. PHẦN ${writtenLabelSol} - HƯỚNG DẪN CHẤM`, bold: true, size: 26, })], heading: HeadingLevel.HEADING_1}));
   
   (solutionData.writtenGradingGuides || []).forEach((guide, index) => {
       children.push(new Paragraph({ children: [ new TextRun({ text: `Câu ${answerCounter + index + 1}: `, bold: true, size: 24 }), new TextRun({ text: guide.questionText, size: 24, bold: true, italics: true })]}));

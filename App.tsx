@@ -31,6 +31,7 @@ const App: React.FC = () => {
     writtenRatio: 30,
     mcqCount: 7,
     writtenCount: 3,
+    writtenType: 'essay',
     totalQuestionCount: 10,
     cognitiveLevelCounts: {
       mcq: { recognition: 4, comprehension: 2, application: 1 },
@@ -440,6 +441,10 @@ const App: React.FC = () => {
         };
       }
       
+      if (!('writtenType' in loadedFormData)) {
+        loadedFormData.writtenType = 'essay';
+      }
+
       if (!('cognitiveLevelCounts' in loadedFormData) && ('recognitionRatio' in loadedFormData)) {
         const { mcqCount, writtenCount, recognitionRatio, comprehensionRatio } = loadedFormData as any;
         const mcqRec = Math.round(mcqCount * (recognitionRatio / 100));
@@ -636,6 +641,7 @@ const App: React.FC = () => {
                 solutionData={solutionData}
                 mcqRatio={formData.mcqRatio}
                 writtenRatio={formData.writtenRatio}
+                writtenType={formData.writtenType}
             />
           )}
 

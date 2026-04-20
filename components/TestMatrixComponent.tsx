@@ -96,6 +96,7 @@ const TestMatrixComponent: React.FC<TestMatrixProps> = ({ matrixData, formData }
   };
 
   const themeGroups = getThemeGroups();
+  const writtenShortLabel = formData.writtenType === 'practice' ? 'TH' : formData.writtenType === 'both' ? 'TL/TH' : 'TL';
 
   return (
     <div className="mt-8 space-y-12">
@@ -131,13 +132,13 @@ const TestMatrixComponent: React.FC<TestMatrixProps> = ({ matrixData, formData }
               </tr>
               <tr className="border-b border-black">
                 <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TN</th>
-                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TL</th>
+                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">{writtenShortLabel}</th>
                 <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TN</th>
-                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TL</th>
+                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">{writtenShortLabel}</th>
                 <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TN</th>
-                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TL</th>
+                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">{writtenShortLabel}</th>
                 <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TN</th>
-                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">TL</th>
+                <th className="border-r border-black p-1 font-bold bg-gray-50 text-center">{writtenShortLabel}</th>
               </tr>
             </thead>
             <tbody>
@@ -274,9 +275,9 @@ const TestMatrixComponent: React.FC<TestMatrixProps> = ({ matrixData, formData }
                 <th colSpan={6} className="p-2 font-bold">Số câu hỏi theo mức độ nhận thức</th>
               </tr>
               <tr className="border-b border-black">
-                <th className="border-r border-black p-1 font-bold">Nhận biết (TN/TL)</th>
-                <th className="border-r border-black p-1 font-bold">Thông hiểu (TN/TL)</th>
-                <th className="p-1 font-bold">Vận dụng (TN/TL)</th>
+                <th className="border-r border-black p-1 font-bold">Nhận biết (TN/{writtenShortLabel})</th>
+                <th className="border-r border-black p-1 font-bold">Thông hiểu (TN/{writtenShortLabel})</th>
+                <th className="p-1 font-bold">Vận dụng (TN/{writtenShortLabel})</th>
               </tr>
             </thead>
             <tbody>

@@ -39,6 +39,7 @@ export interface WrittenQuestion {
   questionText: string;
   suggestedAnswer: string;
   cognitiveLevel: CognitiveLevel;
+  type?: 'essay' | 'practice';
 }
 
 export interface GeneratedTest {
@@ -73,6 +74,7 @@ export interface FormData {
   writtenRatio: number; // For score distribution
   mcqCount: number;
   writtenCount: number;
+  writtenType: 'essay' | 'practice' | 'both';
   totalQuestionCount: number;
   cognitiveLevelCounts: {
     mcq: {

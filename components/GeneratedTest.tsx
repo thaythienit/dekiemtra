@@ -341,7 +341,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
         </div>
         <div>
           <h3 className="text-xl font-semibold border-b-2 border-red-500 pb-2 mb-4 text-red-700">
-            II. PHẦN TỰ LUẬN ({formatScore(writtenScore)} điểm)
+            II. PHẦN {formData.writtenType === 'practice' ? 'THỰC HÀNH' : formData.writtenType === 'both' ? 'TỰ LUẬN VÀ THỰC HÀNH' : 'TỰ LUẬN'} ({formatScore(writtenScore)} điểm)
           </h3>
           <div className="space-y-6">
             {(editedData.writtenQuestions || []).map((q, index) => (
