@@ -548,7 +548,7 @@ const App: React.FC = () => {
                             onClick={() => setIsGuideOpen(true)} 
                             className="ml-1 text-blue-600 hover:underline font-medium focus:outline-none"
                           >
-                            Xem hướng dẫn.
+                            Xem hướng dẫn & video.
                           </button>
                       </p>
                       <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -661,7 +661,7 @@ const App: React.FC = () => {
           aria-labelledby="guide-title"
         >
           <div 
-            className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 sm:p-8 relative"
+            className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 sm:p-8 relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
@@ -672,6 +672,17 @@ const App: React.FC = () => {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             <h3 id="guide-title" className="text-2xl font-bold text-gray-900 mb-6">Hướng dẫn lấy Google AI API Key</h3>
+            
+            <div className="mb-6 aspect-video">
+              <iframe 
+                className="w-full h-full rounded-xl shadow-md border border-gray-200"
+                src="https://www.youtube.com/embed/F018M0Ew3fI"
+                title="Hướng dẫn lấy API Key Google AI Studio"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+
             <ol className="list-decimal list-inside space-y-4 text-gray-700">
               <li>
                 Truy cập <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">Google AI Studio</a> và đăng nhập bằng tài khoản Google của bạn.
