@@ -87,11 +87,7 @@ const App: React.FC = () => {
         initializeGemini(storedApiKey);
         setIsKeyValid(true); 
       } else {
-        // If no stored key, initialize with potential environmental key
-        initializeGemini('');
-        // Check if initializeGemini actually found a system key (this is a bit internal but let's assume it works)
-        // We'll mark it as valid if we're not forcing them to enter one yet
-        setIsKeyValid(null); 
+        setIsKeyValid(false); 
       }
     } catch (error) {
       console.error("Không thể tải dữ liệu từ local storage:", error);
@@ -531,26 +527,22 @@ const App: React.FC = () => {
                   <>
                       <div className="flex items-center gap-2 p-3 bg-green-100 border border-green-200 rounded-md">
                           <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
-                          <p className="text-sm text-green-800 font-medium">
-                            {apiKey ? 'API Key cá nhân đang hoạt động.' : 'Đang sử dụng API Key hệ thống (Sẵn sàng).'}
-                          </p>
+                          <p className="text-sm text-green-800 font-medium">API Key cá nhân đã sẵn sàng.</p>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
-                          <p className="text-sm text-gray-600 font-mono bg-gray-200 px-2 py-1 rounded">
-                            {apiKey ? `•••••••••••••••••${apiKey.slice(-4)}` : 'Sử dụng mặc định của ứng dụng'}
-                          </p>
+                          <p className="text-sm text-gray-600 font-mono bg-gray-200 px-2 py-1 rounded">•••••••••••••••••{apiKey.slice(-4)}</p>
                           <button
                               onClick={handleChangeKey}
                               className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
                           >
-                              {apiKey ? 'Thay đổi' : 'Nhập Key riêng'}
+                              Thay đổi
                           </button>
                       </div>
                   </>
               ) : (
                   <>
                       <p className="text-sm text-gray-600 mb-3">
-                          Để có tốc độ ổn định hơn, bạn nên sử dụng Google AI API Key cá nhân.
+                          Để sử dụng ứng dụng, bạn cần nhập Google AI API Key cá nhân của mình.
                           <button 
                             type="button" 
                             onClick={() => setIsGuideOpen(true)} 
@@ -588,23 +580,7 @@ const App: React.FC = () => {
                       </div>
                       {error && isKeyValid === false && (
                         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-sm text-red-600 mb-2 font-medium">{error}</p>
-                          {error.includes('Quota') && (
-                            <div className="space-y-2">
-                               <p className="text-xs text-red-500">
-                                 Lưu ý: Bạn có thể thử xóa key này để sử dụng Key mặc định của hệ thống nếu có.
-                               </p>
-                               <button 
-                                 onClick={() => {
-                                   setApiKey('');
-                                   handleApiKeyCheck(); // Check empty key which triggers system key
-                                 }}
-                                 className="text-xs font-bold text-red-700 underline"
-                               >
-                                 Sử dụng Key hệ thống ngay
-                               </button>
-                            </div>
-                          )}
+                          <p className="text-sm text-red-600 font-medium">{error}</p>
                         </div>
                       )}
                   </>

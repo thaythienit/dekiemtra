@@ -4,10 +4,8 @@ import type { FormData, GeneratedTest, TestMatrix, TestSolution } from '../types
 let ai: GoogleGenAI | null = null;
 
 export const initializeGemini = (apiKey: string) => {
-    // Priority: User provided key > System Environment Key
-    const keyToUse = apiKey || (process && process.env && process.env.GEMINI_API_KEY) || '';
-    if (keyToUse) {
-        ai = new GoogleGenAI({ apiKey: keyToUse });
+    if (apiKey) {
+        ai = new GoogleGenAI({ apiKey });
     } else {
         ai = null;
     }
@@ -28,10 +26,8 @@ const handleValidationGeminiError = (error: unknown): Error => {
 
 
 export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; error?: string }> => {
-    const keyToValidate = apiKey || (process && process.env && process.env.GEMINI_API_KEY) || '';
-    
-    if (!keyToValidate || keyToValidate.trim() === '') {
-        return { valid: false, error: 'API Key không được để trống và không có Key hệ thống khả dụng.' };
+    if (!apiKey || apiKey.trim() === '') {
+        return { valid: false, error: 'API Key không được để trống.' };
     }
     
     // We try multiple models because sometimes one hits quota while others don't
@@ -40,7 +36,7 @@ export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; 
 
     for (const modelName of modelsToTry) {
         try {
-            const tempAi = new GoogleGenAI({ apiKey: keyToValidate });
+            const tempAi = new GoogleGenAI({ apiKey });
             await tempAi.models.generateContent({
                 model: modelName,
                 contents: 'hi',
@@ -54,7 +50,7 @@ export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; 
             if (msg.includes('api key not valid') || msg.includes('403') || msg.includes('invalid api key')) {
                 break;
             }
-            console.warn(`Validation failed for ${modelName} with ${apiKey ? 'user' : 'system'} key, trying next...`, error);
+            console.warn(`Validation failed for ${modelName}, trying next...`, error);
         }
     }
 
