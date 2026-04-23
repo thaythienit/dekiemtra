@@ -14,10 +14,11 @@ export const initializeGemini = (apiKey: string) => {
 const handleValidationGeminiError = (error: unknown): Error => {
     let errorMessage = "API Key không hợp lệ hoặc đã xảy ra lỗi mạng. Vui lòng kiểm tra lại key và kết nối internet.";
      if (error instanceof Error) {
-        if (error.message.includes('API key not valid')) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('api key not valid') || msg.includes('403')) {
             errorMessage = "Lỗi xác thực: API Key không hợp lệ. Vui lòng kiểm tra lại key của bạn.";
-        } else if (error.message.includes('quota')) {
-            errorMessage = "Lỗi: Đã vượt quá hạn ngạch sử dụng API cho key này.";
+        } else if (msg.includes('quota') || msg.includes('429') || msg.includes('resource_exhausted')) {
+            errorMessage = "Lỗi: Bạn đã vượt quá giới hạn (Quota) của bản miễn phí. Vui lòng đợi 1 phút rồi thử lại, hoặc kiểm tra gói dịch vụ trong Google AI Studio.";
         }
     }
     return new Error(errorMessage);
@@ -28,19 +29,31 @@ export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; 
     if (!apiKey || apiKey.trim() === '') {
         return { valid: false, error: 'API Key không được để trống.' };
     }
-    try {
-        const tempAi = new GoogleGenAI({ apiKey });
-        // A very lightweight call just to check authentication.
-        await tempAi.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: 'Hi', // A minimal prompt
-            config: { maxOutputTokens: 1 }
-        });
-        return { valid: true };
-    } catch (error) {
-        const validationError = handleValidationGeminiError(error);
-        return { valid: false, error: validationError.message };
+    
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash'];
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
+        try {
+            const tempAi = new GoogleGenAI({ apiKey });
+            await tempAi.models.generateContent({
+                model: modelName,
+                contents: 'hi',
+                config: { maxOutputTokens: 1 }
+            });
+            return { valid: true };
+        } catch (error) {
+            lastError = error;
+            // If it's a quota error on one model, try the next. 
+            // If it's an "Invalid Key" error, stop immediately.
+            if (error instanceof Error && (error.message.includes('API key not valid') || error.message.includes('403'))) {
+                break;
+            }
+        }
     }
+
+    const validationError = handleValidationGeminiError(lastError);
+    return { valid: false, error: validationError.message };
 };
 
 const matrixSchema = {
@@ -341,13 +354,13 @@ export const generateMatrixFromGemini = async (formData: FormData): Promise<Test
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: { parts: multimodalContents },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: matrixSchema,
-        temperature: 0.2,
-      },
+        model: 'gemini-1.5-flash',
+        contents: { parts: multimodalContents },
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: matrixSchema,
+            temperature: 0.2,
+        },
     });
     return parseGeminiJson<TestMatrix>(response.text);
   } catch (error) {
@@ -437,13 +450,13 @@ ${mcqDistributionText || 'Không có câu hỏi trắc nghiệm nào được y�
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: { parts: multimodalContents },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: testSchema,
-        temperature: 0.7,
-      },
+        model: 'gemini-1.5-flash',
+        contents: { parts: multimodalContents },
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: testSchema,
+            temperature: 0.7,
+        },
     });
 
     const parsedData = parseGeminiJson<any>(response.text);
@@ -516,7 +529,7 @@ export const generateSolutionFromGemini = async (testData: GeneratedTest, formDa
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
                 responseMimeType: 'application/json',
