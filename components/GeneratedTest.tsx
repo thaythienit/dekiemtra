@@ -19,6 +19,7 @@ interface GeneratedTestProps {
   formData: FormData;
   onGenerateSolution: () => void;
   isSolutionLoading: boolean;
+  apiStatus?: string | null;
   hasSolution: boolean;
   onExportWithSolution: () => void;
   onExportFullBundle: (editedData: GeneratedTestType) => void;
@@ -31,6 +32,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
     formData,
     onGenerateSolution,
     isSolutionLoading,
+    apiStatus,
     hasSolution,
     onExportWithSolution,
     onExportFullBundle
@@ -190,7 +192,7 @@ const GeneratedTest: React.FC<GeneratedTestProps> = ({
                 className="flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
                 {isSolutionLoading ? <LoadingSpinner /> : <KeyIcon className="w-4 h-4 mr-2" />}
-                {isSolutionLoading ? 'Đang tạo...' : hasSolution ? 'Đã tạo đáp án' : 'Tạo Đáp án & HD Chấm'}
+                {isSolutionLoading ? (apiStatus || 'Đang tạo...') : hasSolution ? 'Đã tạo đáp án' : 'Tạo Đáp án & HD Chấm'}
             </button>
             <button
                 onClick={() => onExportFullBundle(editedData)}

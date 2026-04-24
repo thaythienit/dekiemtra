@@ -85,9 +85,22 @@ export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; 
                     }
                     
                     if (msg.includes('quota') || msg.includes('429')) {
+                        let explicitWait = 0;
+                        try {
+                            const errorMsg = error instanceof Error ? error.message : '';
+                            const match = errorMsg.match(/retry in (\d+\.?\d*)s/i);
+                            if (match) {
+                                explicitWait = Math.ceil(parseFloat(match[1])) * 1000;
+                            }
+                        } catch (e) {}
+
+                        if (explicitWait > 0 && explicitWait < 15000) { // Only wait short time for validation
+                            await new Promise(r => setTimeout(r, explicitWait + 500));
+                            continue;
+                        }
+                        
                         modelRetries--;
                         if (modelRetries > 0) {
-                            console.warn(`Validation quota hit for ${modelName}, waiting 2s before retry...`);
                             await new Promise(r => setTimeout(r, 2000));
                             continue;
                         }
@@ -342,7 +355,8 @@ const generateWithModelFallback = async <T>(
     fileImages: string[],
     schema: any,
     temperature: number,
-    context: string
+    context: string,
+    onStatusUpdate?: (status: string) => void
 ): Promise<T> => {
     const models = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash'];
     let lastError: any = null;
@@ -357,6 +371,7 @@ const generateWithModelFallback = async <T>(
 
         for (const model of models) {
             try {
+                if (onStatusUpdate) onStatusUpdate(`Đang sử dụng mô hình ${model}...`);
                 const multimodalContents = createMultimodalContent(prompt, fileImages);
                 const response = await ai.models.generateContent({
                     model: model,
@@ -379,12 +394,39 @@ const generateWithModelFallback = async <T>(
 
                 if (msg.includes('quota') || msg.includes('429') || msg.includes('resource_exhausted')) {
                     console.warn(`Hết hạn ngạch mô hình ${model}. Đang thử phương án dự phòng...`);
-                    // If we have more keys, try rotating keys before trying next model
+                    
+                    // Extract retry delay from error if available (usually in seconds)
+                    let explicitWait = 0;
+                    try {
+                        const errorMsg = error instanceof Error ? error.message : '';
+                        const match = errorMsg.match(/retry in (\d+\.?\d*)s/i);
+                        if (match) {
+                           explicitWait = Math.ceil(parseFloat(match[1])) * 1000;
+                        } else {
+                            const errorObj = JSON.parse(error instanceof Error ? error.message.replace(/^\[.*\] /, '') : '{}');
+                            if (errorObj?.error?.details) {
+                                const retryInfo = errorObj.error.details.find((d: any) => d['@type'] && d['@type'].includes('RetryInfo'));
+                                if (retryInfo?.retryDelay) {
+                                    explicitWait = parseInt(retryInfo.retryDelay) * 1000;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+
+                    if (explicitWait > 0 && explicitWait < 65000) {
+                        if (onStatusUpdate) onStatusUpdate(`API quá tải. Tự động chờ ${Math.ceil(explicitWait/1000)}s...`);
+                        await new Promise(r => setTimeout(r, explicitWait + 1000));
+                        // After waiting, retry this EXACT model instead of moving to next
+                        continue; 
+                    }
+
+                    // If no explicit wait or wait too long, try rotating keys before trying next model
                     if (rotateKey()) {
-                        // Restart model loop with new key
+                        if (onStatusUpdate) onStatusUpdate(`Đổi API Key dự phòng...`);
                         break; 
                     }
-                    // If no more keys, continue to next model
                     continue;
                 }
 
@@ -398,7 +440,7 @@ const generateWithModelFallback = async <T>(
         if (isQuota) {
             retryCount++;
             const waitTime = retryCount * 2000;
-            console.log(`Đang đợi ${waitTime}ms trước khi thử lại lần ${retryCount}...`);
+            if (onStatusUpdate) onStatusUpdate(`Đang thử lại lần ${retryCount} (chờ ${waitTime/1000}s)...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         } else {
             break;
@@ -408,7 +450,7 @@ const generateWithModelFallback = async <T>(
     throw handleGeminiError(lastError, context);
 };
 
-export const generateMatrixFromGemini = async (formData: FormData): Promise<TestMatrix> => {
+export const generateMatrixFromGemini = async (formData: FormData, onStatusUpdate?: (status: string) => void): Promise<TestMatrix> => {
     if (!getAiInstance()) {
         throw new Error("Lỗi: API Key chưa được thiết lập. Vui lòng vào phần 'Cấu hình API Key' để nhập key của bạn.");
     }
@@ -479,9 +521,9 @@ export const generateMatrixFromGemini = async (formData: FormData): Promise<Test
     Chỉ trả về một đối tượng JSON tuân thủ đúng schema. Không thêm bất kỳ văn bản giải thích nào.
     `;
     
-    return await generateWithModelFallback<TestMatrix>(prompt, formData.fileImages || [], matrixSchema, 0.2, "tạo ma trận đề");
+    return await generateWithModelFallback<TestMatrix>(prompt, formData.fileImages || [], matrixSchema, 0.2, "tạo ma trận đề", onStatusUpdate);
 };
-export const generateTestFromGemini = async (formData: FormData, matrix: TestMatrix): Promise<GeneratedTest> => {
+export const generateTestFromGemini = async (formData: FormData, matrix: TestMatrix, onStatusUpdate?: (status: string) => void): Promise<GeneratedTest> => {
   if (!getAiInstance()) {
     throw new Error("Lỗi: API Key chưa được thiết lập. Vui lòng vào phần 'Cấu hình API Key' để nhập key của bạn.");
   }
@@ -563,7 +605,7 @@ ${mcqDistributionText || 'Không có câu hỏi trắc nghiệm nào được y�
   const multimodalContents = createMultimodalContent(prompt, formData.fileImages || []);
 
   try {
-    const parsedData = await generateWithModelFallback<any>(prompt, formData.fileImages || [], testSchema, 0.7, "tạo đề kiểm tra");
+    const parsedData = await generateWithModelFallback<any>(prompt, formData.fileImages || [], testSchema, 0.7, "tạo đề kiểm tra", onStatusUpdate);
     
     // Sanitize Multiple Choice options to remove redundant A, B, C, D prefixes if AI included them
     const sanitizeOptions = (options: string[]) => {
@@ -600,7 +642,7 @@ ${mcqDistributionText || 'Không có câu hỏi trắc nghiệm nào được y�
   }
 };
 
-export const generateSolutionFromGemini = async (testData: GeneratedTest, formData: FormData): Promise<TestSolution> => {
+export const generateSolutionFromGemini = async (testData: GeneratedTest, formData: FormData, onStatusUpdate?: (status: string) => void): Promise<TestSolution> => {
     if (!getAiInstance()) {
         throw new Error("Lỗi: API Key chưa được thiết lập. Vui lòng vào phần 'Cấu hình API Key' để nhập key của bạn.");
     }
@@ -632,7 +674,7 @@ export const generateSolutionFromGemini = async (testData: GeneratedTest, formDa
     `;
     
     try {
-        return await generateWithModelFallback<TestSolution>(prompt, [], solutionSchema, 0.3, "tạo đáp án và hướng dẫn chấm");
+        return await generateWithModelFallback<TestSolution>(prompt, [], solutionSchema, 0.3, "tạo đáp án và hướng dẫn chấm", onStatusUpdate);
     } catch (error) {
         throw handleGeminiError(error, "tạo đáp án và hướng dẫn chấm");
     }

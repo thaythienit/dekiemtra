@@ -67,6 +67,7 @@ const App: React.FC = () => {
   const [testMatrix, setTestMatrix] = useState<TestMatrix | null>(null);
   const [generatedTest, setGeneratedTest] = useState<GeneratedTest | null>(null);
   const [solutionData, setSolutionData] = useState<TestSolution | null>(null);
+  const [apiStatus, setApiStatus] = useState<string | null>(null);
   const [isMatrixLoading, setIsMatrixLoading] = useState<boolean>(false);
   const [isTestLoading, setIsTestLoading] = useState<boolean>(false);
   const [isSolutionLoading, setIsSolutionLoading] = useState<boolean>(false);
@@ -301,6 +302,7 @@ const App: React.FC = () => {
   const handleGenerateMatrix = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsMatrixLoading(true);
+    setApiStatus("Đang phân tích yêu cầu...");
     setError(null);
     setTestMatrix(null);
     setGeneratedTest(null);
@@ -315,7 +317,7 @@ const App: React.FC = () => {
             fileImages: relevantImages,
         };
         
-        const matrixData = await generateMatrixFromGemini(payload);
+        const matrixData = await generateMatrixFromGemini(payload, (status) => setApiStatus(status));
         setTestMatrix(matrixData);
         setLoadingProgress(100);
 
@@ -327,6 +329,7 @@ const App: React.FC = () => {
         }
     } finally {
       setIsMatrixLoading(false);
+      setApiStatus(null);
     }
   }, [formData, perPageContent]);
 
@@ -337,6 +340,7 @@ const App: React.FC = () => {
         return;
     }
     setIsTestLoading(true);
+    setApiStatus("Đang soạn thảo đề...");
     setError(null);
     setGeneratedTest(null);
     setSolutionData(null);
@@ -350,7 +354,7 @@ const App: React.FC = () => {
             fileImages: relevantImages,
         };
 
-        const testData = await generateTestFromGemini(payload, testMatrix);
+        const testData = await generateTestFromGemini(payload, testMatrix, (status) => setApiStatus(status));
         setGeneratedTest(testData);
         setLoadingProgress(100);
     } catch (err: unknown) {
@@ -361,6 +365,7 @@ const App: React.FC = () => {
         }
     } finally {
       setIsTestLoading(false);
+      setApiStatus(null);
     }
   }, [formData, testMatrix, perPageContent]);
 
@@ -368,11 +373,12 @@ const App: React.FC = () => {
     if (!generatedTest) return;
 
     setIsSolutionLoading(true);
+    setApiStatus("Đang tạo đáp án...");
     setError(null);
     setSolutionData(null);
 
     try {
-        const solution = await generateSolutionFromGemini(generatedTest, formData);
+        const solution = await generateSolutionFromGemini(generatedTest, formData, (status) => setApiStatus(status));
         setSolutionData(solution);
     } catch (err: unknown) {
         if (err instanceof Error) {
@@ -382,6 +388,7 @@ const App: React.FC = () => {
         }
     } finally {
         setIsSolutionLoading(false);
+        setApiStatus(null);
     }
   }, [generatedTest, formData]);
 
@@ -608,7 +615,7 @@ const App: React.FC = () => {
             <div className="mt-8 p-8 bg-white rounded-2xl shadow-lg border border-gray-200">
                 <ProgressBar 
                     progress={loadingProgress} 
-                    text={isMatrixLoading ? 'AI đang phân tích để tạo ma trận...' : 'AI đang soạn câu hỏi theo ma trận...'}
+                    text={apiStatus || (isMatrixLoading ? 'AI đang phân tích để tạo ma trận...' : 'AI đang soạn câu hỏi theo ma trận...')}
                 />
             </div>
           )}
@@ -629,6 +636,7 @@ const App: React.FC = () => {
                     formData={formData}
                     onGenerateSolution={handleGenerateSolution}
                     isSolutionLoading={isSolutionLoading}
+                    apiStatus={apiStatus}
                     hasSolution={!!solutionData}
                     onExportWithSolution={handleExportWithSolution}
                     onExportFullBundle={handleExportFullBundle}
