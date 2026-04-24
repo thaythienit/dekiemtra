@@ -1,14 +1,34 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { FormData, GeneratedTest, TestMatrix, TestSolution } from '../types.ts';
 
-let ai: GoogleGenAI | null = null;
+let apiKeys: string[] = [];
+let currentKeyIndex = 0;
+let aiInstances: GoogleGenAI[] = [];
 
-export const initializeGemini = (apiKey: string) => {
-    if (apiKey) {
-        ai = new GoogleGenAI({ apiKey });
+export const initializeGemini = (keys: string | string[]) => {
+    let keyArray: string[] = [];
+    if (Array.isArray(keys)) {
+        keyArray = keys;
     } else {
-        ai = null;
+        keyArray = keys.split(/[,;\n]+/).map(k => k.trim()).filter(k => k !== '');
     }
+    apiKeys = keyArray;
+    aiInstances = keyArray.map(key => new GoogleGenAI({ apiKey: key }));
+    currentKeyIndex = 0;
+};
+
+const getAiInstance = () => {
+    if (aiInstances.length === 0) return null;
+    return aiInstances[currentKeyIndex];
+};
+
+const rotateKey = () => {
+    if (aiInstances.length > 1) {
+        currentKeyIndex = (currentKeyIndex + 1) % aiInstances.length;
+        console.log(`Đã chuyển sang API Key thứ ${currentKeyIndex + 1}`);
+        return true;
+    }
+    return false;
 };
 
 const handleValidationGeminiError = (error: unknown): Error => {
@@ -30,28 +50,39 @@ export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; 
         return { valid: false, error: 'API Key không được để trống.' };
     }
     
-    // We try multiple models because sometimes one hits quota while others don't
+    // Support multiple keys separated by comma or semicolon
+    const keys = apiKey.split(/[,;\n]+/).map(k => k.trim()).filter(k => k !== '');
+    if (keys.length === 0) return { valid: false, error: 'Dữ liệu không hợp lệ.' };
+
     const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash'];
     let lastError: any = null;
+    let validKeysCount = 0;
 
-    for (const modelName of modelsToTry) {
-        try {
-            const tempAi = new GoogleGenAI({ apiKey });
-            await tempAi.models.generateContent({
-                model: modelName,
-                contents: 'hi',
-                config: { maxOutputTokens: 1 }
-            });
-            return { valid: true };
-        } catch (error) {
-            lastError = error;
-            const msg = error instanceof Error ? error.message.toLowerCase() : '';
-            
-            if (msg.includes('api key not valid') || msg.includes('403') || msg.includes('invalid api key')) {
+    for (const key of keys) {
+        let keyValid = false;
+        for (const modelName of modelsToTry) {
+            try {
+                const tempAi = new GoogleGenAI({ apiKey: key });
+                await tempAi.models.generateContent({
+                    model: modelName,
+                    contents: 'hi',
+                    config: { maxOutputTokens: 1 }
+                });
+                keyValid = true;
                 break;
+            } catch (error) {
+                lastError = error;
+                const msg = error instanceof Error ? error.message.toLowerCase() : '';
+                if (msg.includes('api key not valid') || msg.includes('403') || msg.includes('invalid api key')) {
+                    break;
+                }
             }
-            console.warn(`Validation failed for ${modelName}, trying next...`, error);
         }
+        if (keyValid) validKeysCount++;
+    }
+
+    if (validKeysCount > 0) {
+        return { valid: true };
     }
 
     const validationError = handleValidationGeminiError(lastError);
@@ -293,36 +324,64 @@ const generateWithModelFallback = async <T>(
     temperature: number,
     context: string
 ): Promise<T> => {
-    if (!ai) {
-        throw new Error("Lỗi: AI chưa được khởi tạo. Vui lòng kiểm tra API Key.");
-    }
-
     const models = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash'];
     let lastError: any = null;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    for (const model of models) {
-        try {
-            const multimodalContents = createMultimodalContent(prompt, fileImages);
-            const response = await ai.models.generateContent({
-                model: model,
-                contents: { parts: multimodalContents },
-                config: {
-                    responseMimeType: 'application/json',
-                    responseSchema: schema,
-                    temperature: temperature,
-                },
-            });
-            return parseGeminiJson<T>(response.text);
-        } catch (error) {
-            lastError = error;
-            const msg = error instanceof Error ? error.message.toLowerCase() : '';
-            
-            // If it's a structural error (400) or authentication error (403), don't retry with other models
-            if (msg.includes('400') || msg.includes('403') || msg.includes('api key not valid')) {
-                break;
+    while (retryCount < maxRetries) {
+        const ai = getAiInstance();
+        if (!ai) {
+            throw new Error("Lỗi: AI chưa được khởi tạo. Vui lòng kiểm tra API Key.");
+        }
+
+        for (const model of models) {
+            try {
+                const multimodalContents = createMultimodalContent(prompt, fileImages);
+                const response = await ai.models.generateContent({
+                    model: model,
+                    contents: { parts: multimodalContents },
+                    config: {
+                        responseMimeType: 'application/json',
+                        responseSchema: schema,
+                        temperature: temperature,
+                    },
+                });
+                return parseGeminiJson<T>(response.text);
+            } catch (error) {
+                lastError = error;
+                const msg = error instanceof Error ? error.message.toLowerCase() : '';
+                
+                if (msg.includes('400') || msg.includes('403') || msg.includes('api key not valid')) {
+                    // Critical error, don't retry this model/key
+                    break;
+                }
+
+                if (msg.includes('quota') || msg.includes('429') || msg.includes('resource_exhausted')) {
+                    console.warn(`Hết hạn ngạch mô hình ${model}. Đang thử phương án dự phòng...`);
+                    // If we have more keys, try rotating keys before trying next model
+                    if (rotateKey()) {
+                        // Restart model loop with new key
+                        break; 
+                    }
+                    // If no more keys, continue to next model
+                    continue;
+                }
+
+                console.warn(`Model ${model} failed for ${context}, attempting fallback...`, error);
             }
+        }
 
-            console.warn(`Model ${model} failed for ${context}, attempting fallback...`, error);
+        // If we reached here, all models on all keys (if rotated) failed
+        // Wait a bit and retry the whole process if it's a quota issue
+        const isQuota = lastError instanceof Error && (lastError.message.toLowerCase().includes('quota') || lastError.message.includes('429'));
+        if (isQuota) {
+            retryCount++;
+            const waitTime = retryCount * 2000;
+            console.log(`Đang đợi ${waitTime}ms trước khi thử lại lần ${retryCount}...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+            break;
         }
     }
 
@@ -330,7 +389,7 @@ const generateWithModelFallback = async <T>(
 };
 
 export const generateMatrixFromGemini = async (formData: FormData): Promise<TestMatrix> => {
-    if (!ai) {
+    if (!getAiInstance()) {
         throw new Error("Lỗi: API Key chưa được thiết lập. Vui lòng vào phần 'Cấu hình API Key' để nhập key của bạn.");
     }
 
@@ -403,7 +462,7 @@ export const generateMatrixFromGemini = async (formData: FormData): Promise<Test
     return await generateWithModelFallback<TestMatrix>(prompt, formData.fileImages || [], matrixSchema, 0.2, "tạo ma trận đề");
 };
 export const generateTestFromGemini = async (formData: FormData, matrix: TestMatrix): Promise<GeneratedTest> => {
-  if (!ai) {
+  if (!getAiInstance()) {
     throw new Error("Lỗi: API Key chưa được thiết lập. Vui lòng vào phần 'Cấu hình API Key' để nhập key của bạn.");
   }
   
@@ -522,7 +581,7 @@ ${mcqDistributionText || 'Không có câu hỏi trắc nghiệm nào được y�
 };
 
 export const generateSolutionFromGemini = async (testData: GeneratedTest, formData: FormData): Promise<TestSolution> => {
-    if (!ai) {
+    if (!getAiInstance()) {
         throw new Error("Lỗi: API Key chưa được thiết lập. Vui lòng vào phần 'Cấu hình API Key' để nhập key của bạn.");
     }
     const writtenQuestionsText = testData.writtenQuestions.map((q, index) => `Câu ${index + 1}: ${q.questionText}`).join('\n');

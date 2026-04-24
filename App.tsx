@@ -527,7 +527,11 @@ const App: React.FC = () => {
                   <>
                       <div className="flex items-center gap-2 p-3 bg-green-100 border border-green-200 rounded-md">
                           <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
-                          <p className="text-sm text-green-800 font-medium">API Key cá nhân đã sẵn sàng.</p>
+                          <p className="text-sm text-green-800 font-medium">
+                            {apiKey.includes(',') || apiKey.includes(';') || apiKey.includes('\n') 
+                              ? `${apiKey.split(/[,;\n]+/).filter(k => k.trim() !== '').length} API Key đã sẵn sàng và sẽ tự động xoay chuyển.`
+                              : 'API Key cá nhân đã sẵn sàng.'}
+                          </p>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                           <p className="text-sm text-gray-600 font-mono bg-gray-200 px-2 py-1 rounded">•••••••••••••••••{apiKey.slice(-4)}</p>
@@ -542,7 +546,8 @@ const App: React.FC = () => {
               ) : (
                   <>
                       <p className="text-sm text-gray-600 mb-3">
-                          Để sử dụng ứng dụng, bạn cần nhập Google AI API Key cá nhân của mình.
+                          Dán API Key của bạn vào đây. 
+                          <span className="font-bold text-blue-700"> Mẹo:</span> Bạn có thể dán nhiều key (cách nhau bởi dấu phẩy hoặc xuống dòng) để tự động đổi key khi hết hạn ngạch (Quota).
                           <button 
                             type="button" 
                             onClick={() => setIsGuideOpen(true)} 
@@ -551,29 +556,21 @@ const App: React.FC = () => {
                             Xem hướng dẫn & video.
                           </button>
                       </p>
-                      <div className="flex flex-col sm:flex-row items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-start gap-2">
                           <div className="relative flex-grow w-full">
-                              <input 
-                                  type={showApiKey ? 'text' : 'password'}
-                                  placeholder="Dán API Key của bạn vào đây"
+                              <textarea 
+                                  placeholder="Dán một hoặc nhiều API Key vào đây (mỗi dòng một key)"
                                   value={apiKey}
                                   onChange={(e) => setApiKey(e.target.value)}
-                                  className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[42px] max-h-[150px]"
                                   aria-label="API Key Input"
+                                  rows={apiKey.includes('\n') ? 3 : 1}
                               />
-                              <button
-                                  type="button"
-                                  onClick={() => setShowApiKey(!showApiKey)}
-                                  className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700"
-                                  aria-label={showApiKey ? "Ẩn key" : "Hiển thị key"}
-                              >
-                                  {showApiKey ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                              </button>
                           </div>
                           <button 
                               onClick={handleApiKeyCheck}
                               disabled={isKeyValidating}
-                              className="w-full sm:w-auto flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                              className="w-full sm:w-auto h-[42px] flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
                           >
                               {isKeyValidating ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : 'Lưu & Kiểm tra'}
                           </button>
