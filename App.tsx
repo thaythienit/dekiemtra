@@ -577,7 +577,7 @@ const App: React.FC = () => {
                       </div>
                       {error && isKeyValid === false && (
                         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-sm text-red-600 font-medium">{error}</p>
+                          <p className="text-sm text-red-600 font-medium whitespace-pre-line">{error}</p>
                         </div>
                       )}
                   </>
@@ -698,7 +698,10 @@ const App: React.FC = () => {
                 Key của bạn sẽ được tạo. Nhấp vào biểu tượng sao chép để lưu key vào clipboard.
               </li>
               <li>
-                Quay lại ứng dụng, dán key vào ô "Cấu hình API Key" và nhấp <span className="font-semibold bg-gray-100 px-2 py-1 rounded-md text-gray-800">Lưu Key</span>.
+                Quay lại ứng dụng, dán key vào ô "Cấu hình API Key" và nhấp <span className="font-semibold bg-gray-100 px-2 py-1 rounded-md text-gray-800">Lưu & Kiểm tra</span>.
+              </li>
+              <li className="mt-4 pt-4 border-t border-gray-100">
+                <span className="font-bold text-blue-700">Mẹo:</span> Bạn có thể dán nhiều API Key (mỗi dòng một key) để tự động xoay vòng khi hết hạn ngạch.
               </li>
             </ol>
              <div className="mt-6 text-right">

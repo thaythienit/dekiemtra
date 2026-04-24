@@ -38,8 +38,11 @@ const handleValidationGeminiError = (error: unknown): Error => {
         if (msg.includes('api key not valid') || msg.includes('403')) {
             errorMessage = "Lỗi xác thực: API Key không hợp lệ. Vui lòng kiểm tra lại key của bạn.";
         } else if (msg.includes('quota') || msg.includes('429') || msg.includes('resource_exhausted')) {
-            errorMessage = "Lỗi: Bạn đã vượt quá giới hạn (Quota) của bản miễn phí. Vui lòng đợi 1 phút rồi thử lại, hoặc kiểm tra gói dịch vụ trong Google AI Studio.";
+            errorMessage = "Lỗi giới hạn (Quota/429): Bạn đã dùng hết lượt miễn phí hoặc đang gọi quá nhanh (RPM). Vui lòng đợi 1-2 phút rồi thử lại. Nếu vẫn lỗi, hãy thử tạo một API Key mới.";
+        } else if (msg.includes('location') || msg.includes('supported')) {
+            errorMessage = "Lỗi vùng miền: Vùng quốc gia của bạn hiện chưa được Google AI hỗ trợ dịch vụ miễn phí (hoặc cần sử dụng VPN).";
         }
+        errorMessage += `\n\n[Chi tiết kỹ thuật: ${error.message}]`;
     }
     return new Error(errorMessage);
 }
@@ -61,22 +64,38 @@ export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean; 
     for (const key of keys) {
         let keyValid = false;
         for (const modelName of modelsToTry) {
-            try {
-                const tempAi = new GoogleGenAI({ apiKey: key });
-                await tempAi.models.generateContent({
-                    model: modelName,
-                    contents: 'hi',
-                    config: { maxOutputTokens: 1 }
-                });
-                keyValid = true;
-                break;
-            } catch (error) {
-                lastError = error;
-                const msg = error instanceof Error ? error.message.toLowerCase() : '';
-                if (msg.includes('api key not valid') || msg.includes('403') || msg.includes('invalid api key')) {
+            let modelRetries = 2; // Try each model up to twice if quota hit
+            while (modelRetries > 0) {
+                try {
+                    const tempAi = new GoogleGenAI({ apiKey: key });
+                    await tempAi.models.generateContent({
+                        model: modelName,
+                        contents: 'hi',
+                        config: { maxOutputTokens: 1 }
+                    });
+                    keyValid = true;
                     break;
+                } catch (error) {
+                    lastError = error;
+                    const msg = error instanceof Error ? error.message.toLowerCase() : '';
+                    
+                    if (msg.includes('api key not valid') || msg.includes('403') || msg.includes('invalid api key')) {
+                        modelRetries = 0; // Don't retry invalid keys
+                        break;
+                    }
+                    
+                    if (msg.includes('quota') || msg.includes('429')) {
+                        modelRetries--;
+                        if (modelRetries > 0) {
+                            console.warn(`Validation quota hit for ${modelName}, waiting 2s before retry...`);
+                            await new Promise(r => setTimeout(r, 2000));
+                            continue;
+                        }
+                    }
+                    break; // Other errors, move to next model
                 }
             }
+            if (keyValid) break;
         }
         if (keyValid) validKeysCount++;
     }
@@ -284,16 +303,17 @@ const handleGeminiError = (error: unknown, context: string): Error => {
         if (errMessage.includes('api key not valid')) {
             errorMessage = "Lỗi xác thực: API Key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại key của bạn.";
         } else if (errMessage.includes('quota') || errMessage.includes('429') || errMessage.includes('resource_exhausted')) {
-            errorMessage = "Hệ thống AI đang quá tải hoặc bạn đã hết lượt sử dụng miễn phí (Quota). Vui lòng thử lại sau vài giây hoặc kiểm tra tài khoản.";
+            errorMessage = "Lỗi giới hạn (Quota): Bạn đã hết lượt miễn phí hoặc đang thực hiện yêu cầu quá nhanh. Vui lòng đợi 1-2 phút rồi thử lại. Nếu vẫn lỗi, thử dùng API Key khác.";
         } else if (errMessage.includes('400')) {
-            errorMessage = `Lỗi yêu cầu (${context}): Dữ liệu gửi đi không hợp lệ. Có thể do nội dung file quá lớn hoặc không được hỗ trợ.`;
+            errorMessage = `Lỗi yêu cầu (${context}): Dữ liệu không hợp lệ. Có thể do nội dung quá lớn hoặc bị hệ thống Safety chặn (an toàn).`;
         } else if (errMessage.includes('500') || errMessage.includes('server error')) {
-            errorMessage = `Lỗi máy chủ AI (${context}): Đã có lỗi xảy ra phía máy chủ của AI. Vui lòng thử lại sau ít phút.`;
+            errorMessage = `Lỗi máy chủ AI (${context}): Máy chủ Google đang gặp sự cố. Vui lòng thử lại sau.`;
         } else if (errMessage.includes('json')) {
-             errorMessage = `Lỗi phân tích cú pháp (${context}): Phản hồi từ AI không phải là định dạng JSON hợp lệ.`;
+             errorMessage = `Lỗi phân tích JSON (${context}): Phản hồi từ AI không đúng định dạng. Hãy thử lại.`;
         } else {
-             return new Error(`Lỗi khi ${context}: ${error.message}`);
+             errorMessage = `Lỗi không xác định khi ${context}.`;
         }
+        errorMessage += `\n\n[Chi tiết: ${error.message}]`;
     }
     return new Error(errorMessage);
 };
