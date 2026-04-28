@@ -39,6 +39,9 @@ const FormSection: React.FC<FormSectionProps> = ({
     new Set(formData.subjectThemes.length > 0 ? [formData.subjectThemes[0].id] : [])
   );
   
+  // Local state to track raw input strings for points to allow decimal typing (e.g. "0.")
+  const [pointBuffers, setPointBuffers] = useState<Record<string, string>>({});
+  
   // Available textbooks data based on current selection
   const availableData = TEXTBOOKS[formData.subject]?.[formData.className] || [];
 
@@ -125,6 +128,7 @@ const FormSection: React.FC<FormSectionProps> = ({
           let mcqRatio = prev.mcqRatio;
           let mcqTypeCounts = prev.mcqTypeCounts;
           let cognitiveLevelCounts = prev.cognitiveLevelCounts;
+          let customPoints = prev.customPoints;
 
           switch(name) {
               case 'mcqCount':
@@ -135,6 +139,16 @@ const FormSection: React.FC<FormSectionProps> = ({
               case 'writtenCount':
                   writtenCount = cleanValue;
                   cognitiveLevelCounts = { ...prev.cognitiveLevelCounts, written: calculateLevelDistribution(writtenCount) };
+                  // Sync custom points array length
+                  if (prev.customPoints) {
+                      let newWritten = [...prev.customPoints.written];
+                      if (newWritten.length > writtenCount) {
+                          newWritten = newWritten.slice(0, writtenCount);
+                      } else {
+                          while(newWritten.length < writtenCount) newWritten.push(0);
+                      }
+                      customPoints = { ...prev.customPoints, written: newWritten };
+                  }
                   break;
               case 'mcqRatio': // This is for score ratio
                   mcqRatio = cleanValue > 100 ? 100 : cleanValue;
@@ -160,6 +174,7 @@ const FormSection: React.FC<FormSectionProps> = ({
               writtenRatio: 100 - mcqRatio,
               mcqTypeCounts,
               cognitiveLevelCounts,
+              customPoints,
           };
       });
   };
@@ -181,23 +196,18 @@ const FormSection: React.FC<FormSectionProps> = ({
   };
 
   const handleCustomPointChange = (type: 'multipleChoice' | 'trueFalse' | 'matching' | 'fillBlank' | 'written', index: number | null, value: string) => {
-    const numValue = parseFloat(value.replace(',', '.'));
-    if (isNaN(numValue)) {
-        if (value === '') {
-            setFormData(prev => {
-                const customPoints = prev.customPoints || { multipleChoice: 0, trueFalse: 0, matching: 0, fillBlank: 0, written: [] };
-                if (type === 'written' && index !== null) {
-                    const newWritten = [...customPoints.written];
-                    newWritten[index] = 0;
-                    return { ...prev, customPoints: { ...customPoints, written: newWritten } };
-                } else if (type !== 'written') {
-                    return { ...prev, customPoints: { ...customPoints, [type]: 0 } };
-                }
-                return prev;
-            });
-        }
+    // Basic validation to allow typing decimals (allowing dots, commas, and numeric digits)
+    const sanitizedValue = value.replace(',', '.');
+    if (sanitizedValue !== '' && !/^\d*\.?\d*$/.test(sanitizedValue)) {
         return;
     }
+
+    // Update local buffer
+    const bufferKey = index !== null ? `${type}-${index}` : type;
+    setPointBuffers(prev => ({ ...prev, [bufferKey]: value }));
+
+    const numValue = parseFloat(sanitizedValue);
+    if (isNaN(numValue)) return;
 
     setFormData(prev => {
         const customPoints = prev.customPoints || { multipleChoice: 0, trueFalse: 0, matching: 0, fillBlank: 0, written: [] };
@@ -377,6 +387,15 @@ const FormSection: React.FC<FormSectionProps> = ({
     </button>
   );
 
+  const currentMcqPoints = (
+    (formData.mcqTypeCounts.multipleChoice * parseFloat(String(formData.customPoints?.multipleChoice || 0))) +
+    (formData.mcqTypeCounts.trueFalse * parseFloat(String(formData.customPoints?.trueFalse || 0))) +
+    (formData.mcqTypeCounts.matching * parseFloat(String(formData.customPoints?.matching || 0))) +
+    (formData.mcqTypeCounts.fillBlank * parseFloat(String(formData.customPoints?.fillBlank || 0)))
+  );
+  const currentWrittenPoints = formData.customPoints?.written?.reduce((a: number, b: number | string) => a + (parseFloat(String(b)) || 0), 0) || 0;
+  const totalCustomPoints = currentMcqPoints + currentWrittenPoints;
+
   return (
     <form className="p-4 sm:p-6 lg:p-8 bg-white rounded-2xl shadow-lg border border-gray-200">
       <div className="border-b border-gray-200 mb-6">
@@ -485,7 +504,10 @@ const FormSection: React.FC<FormSectionProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Điểm trắc nghiệm */}
                     <div className="space-y-3">
-                        <label className="block text-xs font-bold text-gray-500 uppercase">Phần Trắc nghiệm (Điểm mỗi câu)</label>
+                        <div className="flex justify-between items-center">
+                            <label className="block text-xs font-bold text-gray-500 uppercase">Phần Trắc nghiệm (Điểm mỗi câu)</label>
+                            {currentMcqPoints > 0 && <span className="text-xs font-bold text-blue-600">Tổng: {currentMcqPoints.toFixed(1)}đ</span>}
+                        </div>
                         <div className="space-y-2">
                             {formData.mcqTypeCounts.multipleChoice > 0 && (
                                 <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
@@ -495,7 +517,7 @@ const FormSection: React.FC<FormSectionProps> = ({
                                             type="text" 
                                             placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
                                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={formData.customPoints?.multipleChoice || ''}
+                                            value={pointBuffers['multipleChoice'] !== undefined ? pointBuffers['multipleChoice'] : (formData.customPoints?.multipleChoice ?? '')}
                                             onChange={(e) => handleCustomPointChange('multipleChoice', null, e.target.value)}
                                         />
                                         <span className="text-xs text-gray-400">điểm</span>
@@ -510,7 +532,7 @@ const FormSection: React.FC<FormSectionProps> = ({
                                             type="text" 
                                             placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
                                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={formData.customPoints?.trueFalse || ''}
+                                            value={pointBuffers['trueFalse'] !== undefined ? pointBuffers['trueFalse'] : (formData.customPoints?.trueFalse ?? '')}
                                             onChange={(e) => handleCustomPointChange('trueFalse', null, e.target.value)}
                                         />
                                         <span className="text-xs text-gray-400">điểm</span>
@@ -525,7 +547,7 @@ const FormSection: React.FC<FormSectionProps> = ({
                                             type="text" 
                                             placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
                                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={formData.customPoints?.matching || ''}
+                                            value={pointBuffers['matching'] !== undefined ? pointBuffers['matching'] : (formData.customPoints?.matching ?? '')}
                                             onChange={(e) => handleCustomPointChange('matching', null, e.target.value)}
                                         />
                                         <span className="text-xs text-gray-400">điểm</span>
@@ -540,7 +562,7 @@ const FormSection: React.FC<FormSectionProps> = ({
                                             type="text" 
                                             placeholder={formData.mcqCount > 0 ? ((formData.mcqRatio / 10) / formData.mcqCount).toFixed(2) : '0'} 
                                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={formData.customPoints?.fillBlank || ''}
+                                            value={pointBuffers['fillBlank'] !== undefined ? pointBuffers['fillBlank'] : (formData.customPoints?.fillBlank ?? '')}
                                             onChange={(e) => handleCustomPointChange('fillBlank', null, e.target.value)}
                                         />
                                         <span className="text-xs text-gray-400">điểm</span>
@@ -552,7 +574,10 @@ const FormSection: React.FC<FormSectionProps> = ({
 
                     {/* Điểm tự luận */}
                     <div className="space-y-3">
-                        <label className="block text-xs font-bold text-gray-500 uppercase">Phần Tự luận (Điểm từng câu)</label>
+                        <div className="flex justify-between items-center">
+                            <label className="block text-xs font-bold text-gray-500 uppercase">Phần Tự luận (Điểm từng câu)</label>
+                            {currentWrittenPoints > 0 && <span className="text-xs font-bold text-blue-600">Tổng: {currentWrittenPoints.toFixed(1)}đ</span>}
+                        </div>
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                             {Array.from({ length: formData.writtenCount }).map((_, i) => (
                                 <div key={`written-point-${i}`} className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
@@ -562,7 +587,7 @@ const FormSection: React.FC<FormSectionProps> = ({
                                             type="text" 
                                             placeholder={formData.writtenCount > 0 ? ((formData.writtenRatio / 10) / formData.writtenCount).toFixed(1) : '0'} 
                                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={formData.customPoints?.written?.[i] || ''}
+                                            value={pointBuffers[`written-${i}`] !== undefined ? pointBuffers[`written-${i}`] : (formData.customPoints?.written?.[i] ?? '')}
                                             onChange={(e) => handleCustomPointChange('written', i, e.target.value)}
                                         />
                                         <span className="text-xs text-gray-400">điểm</span>
@@ -572,6 +597,13 @@ const FormSection: React.FC<FormSectionProps> = ({
                         </div>
                     </div>
                 </div>
+                
+                {totalCustomPoints > 0 && Math.abs(totalCustomPoints - 10) > 0.01 && (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700 flex items-center">
+                        <InfoIcon className="w-4 h-4 mr-2" />
+                        Lưu ý: Tổng điểm tùy chỉnh ({totalCustomPoints.toFixed(1)}đ) đang khác với điểm chuẩn (10.0đ). AI sẽ cố gắng tuân thủ thiết lập của bạn.
+                    </div>
+                )}
               </div>
           </div>
 
